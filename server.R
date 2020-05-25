@@ -103,12 +103,14 @@ shinyServer(function(input, output) {
   
   output$distPlot <- renderPlot({
     temp.plot <- ggplot() + 
-      geom_line(data = dat_h0(), aes(y = y, x = x), col = 'blue') + 
-      geom_vline(xintercept = input$mean) +
-      annotate('text',
-               x = input$mean,
-               y = 0.1,
-               label = "bar(x)" ,parse = TRUE, size = 10)
+      geom_line(data = dat_h0(), aes(y = y, x = x), col = 'blue') 
+      if (!is.na(input$mean)) { 
+       temp.plot <- temp.plot +  geom_vline(xintercept = input$mean) +
+         annotate('text',
+                  x = input$mean,
+                  y = 0.1,
+                  label = "bar(x)" ,parse = TRUE, size = 10)
+      }
     temp.plot <- createAlphaLimits(temp.plot,
                                    temp.df = dat_h0(),
                                    type.hyp = input$radio,
@@ -124,7 +126,8 @@ shinyServer(function(input, output) {
                                   true.mean.sig = input$Sigma / sqrt(input$n),
                                   col = 'red')
     if (!is.na(input$H1)) { 
-      temp.plot <- temp.plot + geom_line(data = dat_h1(), aes(y = y, x = x), col = 'orange') 
+      temp.plot <- temp.plot + 
+        geom_line(data = dat_h1(), aes(y = y, x = x), col = 'orange') 
       temp.plot <- createAlphaLimits(temp.plot, 
                                      temp.df = dat_h1(), 
                                      type.hyp = input$radio, 
