@@ -39,7 +39,7 @@ shinyUI(fluidPage(
                     "Bigger / Smaller / Different than",
                     choices = list(">" = 1, 
                                    "<" = 2,
-                                   "=" = 3),
+                                   "!=" = 3),
                     selected = 1),
        numericInput("H1", 
                     "Value of mean under H1",

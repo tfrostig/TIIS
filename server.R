@@ -105,7 +105,7 @@ shinyServer(function(input, output) {
     temp.plot <- ggplot() + 
       geom_line(data = dat_h0(), aes(y = y, x = x), col = 'blue') 
       if (!is.na(input$mean)) { 
-       temp.plot <- temp.plot +  geom_vline(xintercept = input$mean) +
+       temp.plot <- temp.plot +  geom_vline(xintercept = input$mean, col = 'red') +
          annotate('text',
                   x = input$mean,
                   y = 0.1,
@@ -121,7 +121,7 @@ shinyServer(function(input, output) {
     temp.plot <- createPvalLimits(temp.plot, 
                                   temp.df  = dat_h0(),
                                   type.hyp = input$radio,
-                                  alpha    = 1 - pnorm(input$mean, input$H0, input$Sigma / sqrt(input$n)),
+                                  alpha    = 1 - pnorm(abs(input$mean), input$H0, input$Sigma / sqrt(input$n)),
                                   mean.h   = input$H0,
                                   true.mean.sig = input$Sigma / sqrt(input$n),
                                   col = 'red')
@@ -136,6 +136,14 @@ shinyServer(function(input, output) {
                                      true.mean.sig = input$Sigma / sqrt(input$n),
                                      col = 'orange')
       
+    }
+    
+    if (input$radio == 3) { 
+      temp.plot <- temp.plot +  
+        geom_vline(xintercept = input$mean + qnorm(1 -input$alpha) * input$Sigma / sqrt(input$n), 
+                   col = 'red', linetype = 'dashed', size = 1.2) + 
+        geom_vline(xintercept = input$mean  - qnorm(1 -input$alpha) * input$Sigma / sqrt(input$n), 
+                   col = 'red', linetype = 'dashed', size = 1.2)
     }
     temp.plot + theme(text = element_text(size=20), legend.position = 'bottom') +
       scale_color_manual() + 
