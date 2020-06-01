@@ -31,30 +31,39 @@ createDF <- function(mean.h, true.sig, n) {
 
 createAlphaLimits <- function(temp.plot, type.hyp, alpha, temp.df, mean.h, true.mean.sig, col) { 
   if (type.hyp == 1) { 
+    k <- qnorm(1 - alpha, mean.h, true.mean.sig)
     return(temp.plot +  shadeCurve(temp.df = temp.df, 
                                    lim.start = qnorm(1 - alpha, mean.h, true.mean.sig), 
                                    lim.end   = Inf, 
                                    fill      = col,
-                                   shaded    = 0.25))
+                                   shaded    = 0.25) + 
+             annotate("text", x = k, y = 0.05, label = "K", parse = TRUE, size = 5))
   }  
   if (type.hyp == 2) { 
+    k <- qnorm(alpha, mean.h, true.mean.sig)
     return(temp.plot +  shadeCurve(temp.df = temp.df, 
                                    lim.start = -Inf, 
-                                   lim.end   = qnorm(alpha, mean.h, true.mean.sig), 
+                                   lim.end   = k, 
                                    fill      = col,
-                                   shaded    = 0.25)) 
+                                   shaded    = 0.25) + 
+             annotate("text", x = k, y = 0.05, label = "K", parse = TRUE, size = 5)) 
   }
   if (type.hyp == 3) { 
-    return(temp.plot + shadeCurve(temp.df = temp.df, 
-                                  lim.start = -Inf, 
-                                  lim.end   = qnorm(alpha / 2, mean.h, true.mean.sig), 
-                                  fill      = col,
-                                  shaded    = 0.25) + 
+    k1 <-  qnorm(alpha / 2, mean.h, true.mean.sig)
+    k2 <-  qnorm(1 - alpha / 2, mean.h, true.mean.sig)
+    return(temp.plot + 
+             shadeCurve(temp.df = temp.df, 
+                        lim.start = -Inf, 
+                        lim.end   = k1, 
+                        fill      = col,
+                        shaded    = 0.25) + 
              shadeCurve(temp.df   = temp.df, 
-                        lim.start = qnorm(1 - alpha / 2, mean.h, true.mean.sig), 
+                        lim.start = k2, 
                         lim.end   = Inf, 
                         fill      = col,
-                        shaded    = 0.25)) 
+                        shaded    = 0.25) +
+             annotate("text", x = k1, y = 0.05, label = "K[1]", parse = TRUE, size = 5) + 
+             annotate("text", x = k2, y = 0.05, label = "K[2]", parse = TRUE, size = 5))
   }
 }
 
@@ -75,16 +84,20 @@ createPvalLimits <- function(temp.plot, type.hyp, alpha, temp.df, mean.h, true.m
                                    shaded    = 0.25)) 
   }
   if (type.hyp == 3) { 
-    return(temp.plot + shadeCurve(temp.df = temp.df, 
-                                  lim.start = -Inf, 
-                                  lim.end   = qnorm(alpha, mean.h, true.mean.sig), 
-                                  fill      = col,
-                                  shaded    = 0.25) + 
+    k1 <- qnorm(alpha, mean.h, true.mean.sig)
+    k2 <- qnorm(1 - alpha, mean.h, true.mean.sig)
+    return(temp.plot + 
+             shadeCurve(temp.df = temp.df, 
+                        lim.start = -Inf, 
+                        lim.end   = k1, 
+                        fill      = col,
+                        shaded    = 0.25) + 
              shadeCurve(temp.df   = temp.df, 
-                        lim.start = qnorm(1 - alpha, mean.h, true.mean.sig), 
+                        lim.start = k2, 
                         lim.end   = Inf, 
                         fill      = col,
                         shaded    = 0.25)) 
+    
   }
 }
 
@@ -103,14 +116,14 @@ shinyServer(function(input, output) {
   
   output$distPlot <- renderPlot({
     temp.plot <- ggplot() + 
-      geom_line(data = dat_h0(), aes(y = y, x = x), col = 'blue') 
-      if (!is.na(input$mean)) { 
-       temp.plot <- temp.plot +  geom_vline(xintercept = input$mean, col = 'red') +
-         annotate('text',
-                  x = input$mean,
-                  y = 0.1,
-                  label = "bar(x)" ,parse = TRUE, size = 10)
-      }
+      geom_line(data = dat_h0(), aes(y = y, x = x), col = 'blue')
+    if (!is.na(input$mean)) { 
+      temp.plot <- temp.plot +  geom_vline(xintercept = input$mean, col = 'red') +
+        annotate('text',
+                 x = input$mean,
+                 y = 0.1,
+                 label = "bar(x)" ,parse = TRUE, size = 10)
+    }
     temp.plot <- createAlphaLimits(temp.plot,
                                    temp.df = dat_h0(),
                                    type.hyp = input$radio,
@@ -118,10 +131,11 @@ shinyServer(function(input, output) {
                                    mean.h   = input$H0,
                                    true.mean.sig = input$Sigma / sqrt(input$n),
                                    col = 'blue')
+    pval      <- pnorm(input$mean, input$H0, input$Sigma / sqrt(input$n))
     temp.plot <- createPvalLimits(temp.plot, 
                                   temp.df  = dat_h0(),
                                   type.hyp = input$radio,
-                                  alpha    = 1 - pnorm(abs(input$mean), input$H0, input$Sigma / sqrt(input$n)),
+                                  alpha    = min(pval, 1 - pval),
                                   mean.h   = input$H0,
                                   true.mean.sig = input$Sigma / sqrt(input$n),
                                   col = 'red')
@@ -145,13 +159,14 @@ shinyServer(function(input, output) {
         geom_vline(xintercept = input$mean  - qnorm(1 -input$alpha) * input$Sigma / sqrt(input$n), 
                    col = 'red', linetype = 'dashed', size = 1.2)
     }
-    temp.plot + theme(text = element_text(size=20), legend.position = 'bottom') +
-      scale_color_manual() + 
-      guides(color = guide_legend(override.aes = list(size = 4, 
-                                                      shape = 21, 
+    temp.plot + 
+      theme(text = element_text(size=20), legend.position = 'bottom') + 
+      scale_color_manual() +
+      guides(color = guide_legend(override.aes = list(size = 4,
+                                                      shape = 21,
                                                       labels = c("Alpha", "P-value", "Power"),
                                                       color = c("blue", "red", "orange"),
-                                                      fill = c("blue", "red", "orange")), 
+                                                      fill = c("blue", "red", "orange")),
                                   order = 1))
   })
   
